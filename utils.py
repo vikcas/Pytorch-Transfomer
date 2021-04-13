@@ -20,15 +20,17 @@ def attention(Q, K, V):
 class AttentionBlock(torch.nn.Module):
     def __init__(self, dim_val, dim_attn):
         super(AttentionBlock, self).__init__()
-        self.value = Value(dim_val, dim_val)
-        self.key = Key(dim_val, dim_attn)
-        self.query = Query(dim_val, dim_attn)
+        # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+        device = "cpu"
+        self.value = Value(dim_val, dim_val).to(device)
+        self.key = Key(dim_val, dim_attn).to(device)
+        self.query = Query(dim_val, dim_attn).to(device)
     
     def forward(self, x, kv = None):
         if(kv is None):
             #Attention with x connected to Q,K and V (For encoder)
             return attention(self.query(x), self.key(x), self.value(x))
-        
+
         #Attention with x as Q, external vector kv as K an V (For decoder)
         return attention(self.query(x), self.key(kv), self.value(kv))
     
@@ -36,12 +38,14 @@ class MultiHeadAttentionBlock(torch.nn.Module):
     def __init__(self, dim_val, dim_attn, n_heads):
         super(MultiHeadAttentionBlock, self).__init__()
         self.heads = []
+        # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+        device = "cpu"
         for i in range(n_heads):
             self.heads.append(AttentionBlock(dim_val, dim_attn))
         
-        self.heads = nn.ModuleList(self.heads)
+        self.heads = nn.ModuleList(self.heads).to(device)
         
-        self.fc = nn.Linear(n_heads * dim_val, dim_val, bias = False)
+        self.fc = nn.Linear(n_heads * dim_val, dim_val, bias = False).to(device)
                       
         
     def forward(self, x, kv = None):
@@ -102,7 +106,7 @@ class Query(torch.nn.Module):
 
 # https://pytorch.org/tutorials/beginner/transformer_tutorial.html
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
+    def __init__(self, d_model, dropout=0.1, max_len=10000):
         super(PositionalEncoding, self).__init__()
 
         pe = torch.zeros(max_len, d_model)
@@ -118,8 +122,8 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        x = x + self.pe[:x.size(1), :]. squeeze(1)
-        return x     
+        x = x + self.pe[:x.size(1), :].squeeze(1)
+        return x
     
 def get_data(batch_size, input_sequence_length, output_sequence_length):
     i = input_sequence_length + output_sequence_length
